@@ -4,7 +4,6 @@
     "version": "1.0",
     "manifest_version": 3,
     "permissions": [
-        "activeTab",
         "scripting",
         "cookies"
     ],
@@ -12,7 +11,7 @@
         "service_worker": "background.js"
     },
     "host_permissions": [
-        "*://*/*"
+        "https://nach-il.com/*"
     ],
     "web_accessible_resources": [
         {
@@ -22,7 +21,7 @@
                 "content-script.js"
             ],
             "matches": [
-                "<all_urls>"
+                "https://nach-il.com/*"
             ]
         }
     ],
