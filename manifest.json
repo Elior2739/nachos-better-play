@@ -1,0 +1,34 @@
+{
+    "name": "Nachos better video player",
+    "description": "Extension to update Nachos to a better player",
+    "version": "1.0",
+    "manifest_version": 3,
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "cookies"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "host_permissions": [
+        "*://*/*"
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "./lib/plyr.css",
+                "./lib/plyr.polyfilled.js",
+                "content-script.js"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
+    "icons": {
+        "16": "icon.png",
+        "48": "icon.png",
+        "128": "icon.png"
+    }
+}
