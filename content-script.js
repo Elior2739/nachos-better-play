@@ -1,5 +1,3 @@
-console.log("Content-Script injected")
-
 const getStartTime = () => {
     const scripts = document.querySelectorAll('script');
     let startTime = 0;
@@ -18,7 +16,7 @@ let lastTime = 0;
 const sendProgressToServer = (player) => {
     if (!player || lastTime == player.currentTime) return;
     lastTime = player.currentTime;
-    
+
     const payload = JSON.stringify({
         currentTime: Math.floor(player.currentTime),
         duration: Math.floor(player.duration),
@@ -77,16 +75,19 @@ const createBackButtonElement = () => {
 const createNextButtonElement = () => {
     const nextBtn = document.createElement('button');
     nextBtn.type = 'button';
-    nextBtn.className = 'plyr__control';
+    nextBtn.className = 'plyr__control plyr__control--next-episode';
     nextBtn.id = 'plyr-next-episode';
+    nextBtn.setAttribute('data-plyr', 'next-episode');
+
     nextBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" style="width:18px;height:18px;">
-            <path fill="currentColor" d="M6,18L14.5,12L6,6V18M16,6V18H18V6H16Z" />
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M6,18L14.5,12L6,6V18M16,6V18H18V6H16Z"></path>
         </svg>
-        <span class="plyr__tooltip">הפרק הבא</span>`;
+        <span class="plyr__tooltip" role="tooltip">הפרק הבא</span>
+    `;
+
     return nextBtn;
 }
-
 const removeOldElements = () => {
     const oldVideo = document.querySelector("#my-video_html5_api");
     if (oldVideo) {
@@ -99,13 +100,29 @@ const removeOldElements = () => {
     if (container) container.remove();
 };
 
+const createFloatingNextButton = (url) => {
+    const btn = document.createElement('div');
+    btn.id = 'floating-next-episode';
+    btn.innerHTML = `
+        <div style="
+            position: absolute; bottom: 80px; right: 20px; z-index: 10;
+            background: rgba(0, 0, 0, 0.8); color: white; padding: 15px 25px;
+            border-radius: 4px; cursor: pointer; font-family: sans-serif;
+            border: 1px solid #fff; transition: 0.3s;
+        ">
+            <span style="font-weight: bold;">הפרק הבא מתחיל בקרוב...</span>
+            <div style="margin-top: 5px; font-size: 0.9em; color: #00b3ff;">עבור עכשיו >></div>
+        </div>
+    `;
+    btn.onclick = () => window.location.href = url;
+    return btn;
+};
+
 (function () {
     const SourceURL = getVideoURL();
     const NextURL = getNextURL();
     const BackURL = getBackURL() ?? "https://nach-il.com/";
 
-    console.log(Plyr)
-    console.log(SourceURL)
     if (typeof Plyr === 'undefined' || !SourceURL) return console.log("Couldn't find the source or Plyr");
 
     const newVideoElement = createVideoElement(SourceURL);
@@ -114,22 +131,20 @@ const removeOldElements = () => {
 
     const player = new Plyr(newVideoElement, {
         autoplay: true,
-        keyboard: { global: false } 
+        keyboard: { global: false }
     });
 
     player.once("ready", () => {
         const controls = document.querySelector('.plyr__controls');
         if (controls) {
             const playBtn = controls.querySelector('[data-plyr="play"]');
-            
-            // הוספת כפתור "אחורה" לפני כפתור הנגינה
+
             if (BackURL) {
                 const backBtn = createBackButtonElement();
                 backBtn.onclick = () => window.location.href = BackURL;
                 playBtn.before(backBtn);
             }
 
-            // הוספת כפתור "קדימה" אחרי כפתור הנגינה
             if (NextURL) {
                 const nextBtn = createNextButtonElement();
                 nextBtn.onclick = () => window.location.href = NextURL;
@@ -147,6 +162,26 @@ const removeOldElements = () => {
     });
 
     player.on("pause", () => sendProgressToServer(player));
+    player.once("ended", () => {
+        if(NextURL != undefined) {
+            window.location.href = NextURL;
+        }
+    })
+
+    let nextBtnAdded = false;
+    player.on("timeupdate", () => {
+        if (player.duration - player.currentTime <= 30 && NextURL && !nextBtnAdded && NextURL != undefined) {
+            const floatingBtn = createFloatingNextButton(NextURL);
+            player.elements.container.appendChild(floatingBtn);
+            nextBtnAdded = true;
+        }
+
+        if (player.duration - player.currentTime > 30 && nextBtnAdded) {
+            const existingBtn = document.getElementById('floating-next-episode');
+            if (existingBtn) existingBtn.remove();
+            nextBtnAdded = false;
+        }
+    });
 
     window.addEventListener("keydown", (event) => {
         const handledKeys = ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Space"];
@@ -169,3 +204,5 @@ const removeOldElements = () => {
         if (document.visibilityState === 'hidden') sendProgressToServer(player);
     });
 })();
+
+console.log("Content-Script injected")
